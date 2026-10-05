@@ -22,3 +22,16 @@ Before using cloud features:
    ```
 
 The app reports Firebase connection and permission errors in its status banner. Room chat accepts emoji input from the device keyboard and GIFs pasted as HTTPS `.gif` links or animated GIF files. Pasted GIF files are stored in Cloud Storage (up to 2 MB); no Klipy API key or Firebase Function is required. Profile, storefront, chat-room, post, and chat data is stored in Firestore; uploaded images and videos are stored in Cloud Storage so they do not exceed Firestore's document-size limit.
+
+
+## Storefront invoices
+
+Storefront owners can create itemized invoices from **Manage storefront → Invoices**. Each invoice supports customer details, invoice number, due date, notes, quantity/unit-price line items, tax, currency, and multiple payment-app links. Every payment link is rendered as a clickable URL and QR code in the generated PDF. PDFs are generated in the browser and download directly so the storefront owner can send them to the customer.
+
+The invoice records are stored in `stores/{storeId}/invoices` and are restricted by the Firestore rules to the storefront owner. The browser loads jsPDF and QRCode.js from cdnjs for PDF/QR generation; production deployments should pin or self-host these dependencies if your deployment policy requires it.
+
+After changing Firestore rules, deploy them with:
+
+```sh
+firebase deploy --only firestore:rules
+```

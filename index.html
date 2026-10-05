@@ -458,6 +458,18 @@
               <p class="helper-text">Add up to 6 images or short videos. Each file can be up to 2 MB.</p>
               <div class="template-media-preview" id="storeTemplateMediaPreview"></div>
             </section>
+            <section class="template-section invoice-manager-section">
+              <div class="section-heading-row">
+                <div>
+                  <h3>Invoices</h3>
+                  <p class="helper-text">Create itemized invoices and give customers a payment link or scannable QR code.</p>
+                </div>
+                <button type="button" class="primary-btn" id="createInvoiceButton">+ Invoice</button>
+              </div>
+              <div class="invoice-list" id="invoiceList">
+                <p class="empty-state">No invoices yet.</p>
+              </div>
+            </section>
             <section class="template-section">
               <h3>Connect</h3>
               <div class="social-link-fields" id="storeTemplateSocialLinks"></div>
@@ -483,6 +495,51 @@
         </div>
       </div>
     </main>
+
+    <div class="modal-overlay hidden" id="invoiceModal" aria-hidden="true">
+      <section class="invoice-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="invoiceModalTitle">
+        <button class="modal-close" id="closeInvoiceModal" aria-label="Close invoice editor">×</button>
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <div>
+            <h2 id="invoiceModalTitle">Create invoice</h2>
+            <p class="helper-text">Build a customer-ready invoice without leaving your storefront.</p>
+          </div>
+        </div>
+        <form id="invoiceForm" class="store-form invoice-form">
+          <input type="hidden" name="invoiceId" />
+          <div class="form-grid">
+            <label><span>Customer name</span><input name="customerName" maxlength="120" required placeholder="Customer name" /></label>
+            <label><span>Customer email</span><input name="customerEmail" type="email" maxlength="160" placeholder="customer@example.com" /></label>
+          </div>
+          <div class="form-grid">
+            <label><span>Invoice number</span><input name="invoiceNumber" maxlength="40" required /></label>
+            <label><span>Due date</span><input name="dueDate" type="date" /></label>
+          </div>
+          <label><span>Notes</span><textarea name="notes" rows="2" maxlength="500" placeholder="Thank you for your business..."></textarea></label>
+          <div class="invoice-items-editor">
+            <div class="section-heading-row"><h3>Items</h3><button type="button" class="secondary-btn" id="addInvoiceItem">+ Add item</button></div>
+            <div id="invoiceItems"></div>
+          </div>
+          <div class="form-grid">
+            <label><span>Tax (%)</span><input name="taxRate" type="number" min="0" max="100" step="0.01" value="0" /></label>
+            <label><span>Currency</span><input name="currency" maxlength="5" value="USD" required /></label>
+          </div>
+          <div class="payment-methods-editor">
+            <div class="section-heading-row">
+              <div><h3>Payment methods</h3><p class="helper-text">Add any payment app or checkout link. Each one gets a QR code on the PDF.</p></div>
+              <button type="button" class="secondary-btn" id="addPaymentMethod">+ Payment app</button>
+            </div>
+            <div id="paymentMethods"></div>
+          </div>
+          <p class="account-status" id="invoiceStatus" aria-live="polite"></p>
+          <div class="invoice-form-actions">
+            <button type="button" class="secondary-btn" id="cancelInvoice">Cancel</button>
+            <button type="submit" class="primary-btn">Save &amp; download PDF</button>
+          </div>
+        </form>
+      </section>
+    </div>
 
     <div class="modal-overlay hidden" id="storeDetailModal" aria-hidden="true">
       <section class="detail-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="storeDetailTitle">
@@ -648,6 +705,8 @@
       </section>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
     <script type="module" src="script.js"></script>
   </body>
 </html>

@@ -2761,3 +2761,56 @@ button {
     scroll-snap-type: y proximity;
   }
 }
+
+/* Invoice manager — intentionally uses the existing Aethel glass/gradient language. */
+.section-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.section-heading-row h3 { margin: 0; }
+.invoice-manager-section .helper-text { margin: 0.35rem 0 0; }
+.invoice-list { display: grid; gap: 0.65rem; margin-top: 0.85rem; }
+.invoice-list-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.8rem;
+  padding: 0.8rem; border: 1px solid var(--line); border-radius: 15px;
+  background: rgba(255,255,255,.025);
+}
+.invoice-list-copy { display: grid; min-width: 0; gap: .2rem; }
+.invoice-list-copy strong { color: var(--text); }
+.invoice-list-copy span { color: var(--text); font-size: .82rem; }
+.invoice-list-copy small { color: var(--muted); font-size: .7rem; }
+.invoice-list-actions { display: flex; gap: .45rem; flex: 0 0 auto; }
+.invoice-modal {
+  width: min(860px, calc(100vw - 2rem)); max-height: min(92vh, 900px); overflow: auto;
+  padding: 1.2rem;
+}
+.invoice-form { display: grid; gap: 1rem; }
+.invoice-items-editor, .payment-methods-editor {
+  display: grid; gap: .7rem; padding: .9rem; border: 1px solid var(--line);
+  border-radius: 16px; background: rgba(255,255,255,.02);
+}
+.invoice-item-row, .payment-method-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 90px 120px 2.5rem; gap: .45rem; align-items: center;
+}
+.payment-method-row { grid-template-columns: 180px minmax(0,1fr) 2.5rem; }
+.invoice-item-row input, .payment-method-row input {
+  width: 100%; min-width: 0; padding: .65rem .7rem; border: 1px solid var(--line);
+  border-radius: 10px; background: rgba(17,24,39,.72); color: var(--text);
+}
+.icon-btn {
+  width: 2.35rem; height: 2.35rem; border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(255,255,255,.04); color: var(--text); cursor: pointer; font-size: 1.1rem;
+}
+.invoice-form-actions { display:flex; justify-content:flex-end; gap:.6rem; }
+@media (max-width: 640px) {
+  .invoice-list-card { align-items: flex-start; flex-direction: column; }
+  .invoice-list-actions { width: 100%; }
+  .invoice-list-actions button { flex: 1; }
+  .invoice-item-row { grid-template-columns: minmax(0,1fr) 70px 100px 2.35rem; }
+  .payment-method-row { grid-template-columns: 1fr; }
+  .payment-method-row .icon-btn { width: 100%; }
+  .invoice-modal { width: calc(100vw - 1rem); padding: .85rem; }
+  .invoice-form .form-grid { grid-template-columns: 1fr; }
+}

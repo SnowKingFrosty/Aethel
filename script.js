@@ -49,6 +49,17 @@ const storeTemplateMedia = document.getElementById('storeTemplateMedia');
 const storeTemplateMediaPreview = document.getElementById('storeTemplateMediaPreview');
 const storeTemplateSocialLinks = document.getElementById('storeTemplateSocialLinks');
 const storeTemplateStatus = document.getElementById('storeTemplateStatus');
+const invoiceModal = document.getElementById('invoiceModal');
+const closeInvoiceModal = document.getElementById('closeInvoiceModal');
+const invoiceForm = document.getElementById('invoiceForm');
+const invoiceItems = document.getElementById('invoiceItems');
+const paymentMethods = document.getElementById('paymentMethods');
+const invoiceList = document.getElementById('invoiceList');
+const invoiceStatus = document.getElementById('invoiceStatus');
+const createInvoiceButton = document.getElementById('createInvoiceButton');
+const addInvoiceItem = document.getElementById('addInvoiceItem');
+const addPaymentMethod = document.getElementById('addPaymentMethod');
+const cancelInvoice = document.getElementById('cancelInvoice');
 const closeStoreTemplate = document.getElementById('closeStoreTemplate');
 const manageStorefrontButton = document.getElementById('manageStorefrontButton');
 const storeLogoInput = document.getElementById('storeLogoInput');
@@ -221,6 +232,9 @@ let discoverSearchQuery = '';
 let activeChatConversationId = null;
 let activeChatUnsubscribe = null;
 let activeStorefrontId = null;
+let activeInvoices = [];
+let activeInvoiceStoreId = null;
+let invoicesUnsubscribe = null;
 let isManagingStorefront = false;
 let rooms = [];
 let activeRoomId = null;
@@ -835,6 +849,257 @@ const renderDiscoverFeed = () => {
   }
 };
 
+
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[character]));
+
+const getInvoiceCurrency = (value) => (String(value || 'USD').trim().toUpperCase().slice(0, 5) || 'USD');
+
+const invoiceMoney = (value, currency = 'USD') => {
+  const amount = Number(value) || 0;
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: getInvoiceCurrency(currency) }).format(amount);
+  } catch {
+    return `${getInvoiceCurrency(currency)} ${amount.toFixed(2)}`;
+  }
+};
+
+const invoiceDateLabel = (value) => {
+  if (!value) return 'No due date';
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+};
+
+const invoiceTotals = (invoice) => {
+  const subtotal = (invoice.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
+  const tax = subtotal * ((Number(invoice.taxRate) || 0) / 100);
+  return { subtotal, tax, total: subtotal + tax };
+};
+
+const addInvoiceItemRow = (item = {}) => {
+  const row = createElement('div', 'invoice-item-row');
+  row.innerHTML = `
+    <input name="itemDescription" maxlength="180" placeholder="Item or service" value="${escapeHtml(item.description || '')}">
+    <input name="itemQuantity" type="number" min="0.01" step="0.01" value="${Number(item.quantity) || 1}" aria-label="Quantity">
+    <input name="itemPrice" type="number" min="0" step="0.01" value="${Number(item.unitPrice) || 0}" aria-label="Unit price">
+    <button type="button" class="icon-btn invoice-remove-item" aria-label="Remove item">×</button>`;
+  row.querySelector('.invoice-remove-item').addEventListener('click', () => {
+    if (invoiceItems.children.length > 1) row.remove();
+  });
+  invoiceItems.append(row);
+};
+
+const addPaymentMethodRow = (method = {}) => {
+  const row = createElement('div', 'payment-method-row');
+  row.innerHTML = `
+    <input name="paymentName" maxlength="60" placeholder="Payment app (e.g. PayPal)" value="${escapeHtml(method.name || '')}">
+    <input name="paymentUrl" type="url" maxlength="1000" placeholder="https://..." value="${escapeHtml(method.url || '')}">
+    <button type="button" class="icon-btn payment-remove" aria-label="Remove payment method">×</button>`;
+  row.querySelector('.payment-remove').addEventListener('click', () => row.remove());
+  paymentMethods.append(row);
+};
+
+const collectInvoiceForm = () => {
+  const itemRows = Array.from(invoiceItems.querySelectorAll('.invoice-item-row'));
+  const items = itemRows.map((row) => ({
+    description: row.querySelector('[name="itemDescription"]').value.trim(),
+    quantity: Number(row.querySelector('[name="itemQuantity"]').value),
+    unitPrice: Number(row.querySelector('[name="itemPrice"]').value)
+  })).filter((item) => item.description && item.quantity > 0 && item.unitPrice >= 0);
+
+  const methods = Array.from(paymentMethods.querySelectorAll('.payment-method-row')).map((row) => ({
+    name: row.querySelector('[name="paymentName"]').value.trim(),
+    url: row.querySelector('[name="paymentUrl"]').value.trim()
+  })).filter((method) => method.name && method.url);
+
+  return {
+    invoiceId: invoiceForm.elements.invoiceId.value || '',
+    invoiceNumber: invoiceForm.elements.invoiceNumber.value.trim(),
+    customerName: invoiceForm.elements.customerName.value.trim(),
+    customerEmail: invoiceForm.elements.customerEmail.value.trim(),
+    dueDate: invoiceForm.elements.dueDate.value,
+    notes: invoiceForm.elements.notes.value.trim(),
+    taxRate: Number(invoiceForm.elements.taxRate.value) || 0,
+    currency: getInvoiceCurrency(invoiceForm.elements.currency.value),
+    items,
+    paymentMethods: methods
+  };
+};
+
+const renderInvoiceList = () => {
+  invoiceList.replaceChildren();
+  if (!activeInvoices.length) {
+    invoiceList.append(createElement('p', 'empty-state', 'No invoices yet. Create one to send a customer a polished bill.'));
+    return;
+  }
+  activeInvoices.forEach((invoice) => {
+    const { total } = invoiceTotals(invoice);
+    const card = createElement('article', 'invoice-list-card');
+    const copy = createElement('div', 'invoice-list-copy');
+    copy.append(
+      createElement('strong', `Invoice ${invoice.invoiceNumber || invoice.id.slice(0, 8)}`),
+      createElement('span', invoice.customerName || 'Customer'),
+      createElement('small', `${invoice.items?.length || 0} ${(invoice.items?.length || 0) === 1 ? 'item' : 'items'} · ${invoiceMoney(total, invoice.currency)} · ${invoiceDateLabel(invoice.dueDate)}`)
+    );
+    const actions = createElement('div', 'invoice-list-actions');
+    const edit = createElement('button', 'secondary-btn', 'Edit');
+    edit.type = 'button';
+    edit.addEventListener('click', () => openInvoiceEditor(invoice));
+    const pdf = createElement('button', 'primary-btn', 'PDF');
+    pdf.type = 'button';
+    pdf.addEventListener('click', () => downloadInvoicePdf(invoice));
+    actions.append(edit, pdf);
+    card.append(copy, actions);
+    invoiceList.append(card);
+  });
+};
+
+const subscribeToStoreInvoices = (storeId) => {
+  if (invoicesUnsubscribe) invoicesUnsubscribe();
+  activeInvoiceStoreId = storeId;
+  activeInvoices = [];
+  renderInvoiceList();
+  if (!storeId || !isAuthenticated || !auth.currentUser) return;
+  invoicesUnsubscribe = onSnapshot(
+    collection(db, 'stores', storeId, 'invoices'),
+    (snapshot) => {
+      activeInvoices = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => String(b.invoiceNumber || '').localeCompare(String(a.invoiceNumber || '')));
+      renderInvoiceList();
+    },
+    (error) => {
+      invoiceStatus.textContent = `Unable to load invoices: ${error.message}`;
+      invoiceStatus.classList.add('error');
+    }
+  );
+};
+
+const openInvoiceEditor = (invoice = null) => {
+  if (!activeStorefrontId || !isAuthenticated || auth.currentUser?.uid !== stores.find((s) => s.id === activeStorefrontId)?.ownerUid) return;
+  invoiceForm.reset();
+  invoiceItems.replaceChildren();
+  paymentMethods.replaceChildren();
+  invoiceStatus.textContent = '';
+  invoiceStatus.classList.remove('error');
+  invoiceForm.elements.invoiceId.value = invoice?.id || '';
+  invoiceForm.elements.invoiceNumber.value = invoice?.invoiceNumber || `INV-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${String(activeInvoices.length + 1).padStart(3, '0')}`;
+  invoiceForm.elements.customerName.value = invoice?.customerName || '';
+  invoiceForm.elements.customerEmail.value = invoice?.customerEmail || '';
+  invoiceForm.elements.dueDate.value = invoice?.dueDate || '';
+  invoiceForm.elements.notes.value = invoice?.notes || '';
+  invoiceForm.elements.taxRate.value = invoice?.taxRate ?? 0;
+  invoiceForm.elements.currency.value = invoice?.currency || 'USD';
+  (invoice?.items?.length ? invoice.items : [{}]).forEach(addInvoiceItemRow);
+  (invoice?.paymentMethods || []).forEach(addPaymentMethodRow);
+  document.getElementById('invoiceModalTitle').textContent = invoice ? `Edit ${invoice.invoiceNumber}` : 'Create invoice';
+  openModal(invoiceModal);
+};
+
+const downloadInvoicePdf = async (invoice) => {
+  const jsPDF = window.jspdf?.jsPDF;
+  if (!jsPDF) throw new Error('PDF tools are still loading. Please try again in a moment.');
+  const store = stores.find((item) => item.id === (invoice.storeId || activeStorefrontId));
+  if (!store) throw new Error('Storefront not found.');
+  const { subtotal, tax, total } = invoiceTotals(invoice);
+  const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
+  const margin = 48;
+  const pageWidth = 612;
+  let y = 52;
+  const blue = [103, 213, 255];
+  const ink = [17, 24, 39];
+  const muted = [95, 105, 125];
+  const addText = (text, x, yy, size = 10, color = ink, options = {}) => {
+    pdf.setFontSize(size);
+    pdf.setTextColor(...color);
+    pdf.setFont('helvetica', options.bold ? 'bold' : 'normal');
+    pdf.text(String(text ?? ''), x, yy, options);
+  };
+  const addWrapped = (text, x, yy, width, size = 10, color = ink) => {
+    pdf.setFontSize(size);
+    pdf.setTextColor(...color);
+    pdf.setFont('helvetica', 'normal');
+    const lines = pdf.splitTextToSize(String(text || ''), width);
+    pdf.text(lines, x, yy);
+    return yy + lines.length * (size + 3);
+  };
+  addText(store.name, margin, y, 22, ink, { bold: true });
+  addText('INVOICE', pageWidth - margin, y, 18, blue, { bold: true, align: 'right' });
+  y += 22;
+  addText(store.handle ? `@${String(store.handle).replace(/^@/, '')}` : 'Aethel storefront', margin, y, 9, muted);
+  addText(`#${invoice.invoiceNumber}`, pageWidth - margin, y, 10, muted, { align: 'right' });
+  y += 28;
+  pdf.setDrawColor(220, 225, 235);
+  pdf.line(margin, y, pageWidth - margin, y);
+  y += 24;
+  addText('BILL TO', margin, y, 8, muted, { bold: true });
+  y += 15;
+  addText(invoice.customerName, margin, y, 12, ink, { bold: true });
+  if (invoice.customerEmail) { y += 14; addText(invoice.customerEmail, margin, y, 9, muted); }
+  addText('DUE', pageWidth - 150, y - (invoice.customerEmail ? 14 : 0), 8, muted, { bold: true });
+  addText(invoiceDateLabel(invoice.dueDate), pageWidth - margin, y - (invoice.customerEmail ? 14 : 0), 10, ink, { align: 'right' });
+  y += 32;
+  addText('ITEM', margin, y, 8, muted, { bold: true });
+  addText('QTY', 380, y, 8, muted, { bold: true, align: 'right' });
+  addText('UNIT', 455, y, 8, muted, { bold: true, align: 'right' });
+  addText('AMOUNT', pageWidth - margin, y, 8, muted, { bold: true, align: 'right' });
+  y += 9; pdf.line(margin, y, pageWidth - margin, y); y += 19;
+  (invoice.items || []).forEach((item) => {
+    const descLines = pdf.splitTextToSize(item.description, 275);
+    addText(descLines[0], margin, y, 10, ink, { bold: true });
+    if (descLines.length > 1) addText(descLines.slice(1).join(' '), margin, y + 13, 9, muted);
+    addText(item.quantity, 380, y, 10, ink, { align: 'right' });
+    addText(invoiceMoney(item.unitPrice, invoice.currency), 455, y, 10, ink, { align: 'right' });
+    addText(invoiceMoney(item.quantity * item.unitPrice, invoice.currency), pageWidth - margin, y, 10, ink, { align: 'right' });
+    y += Math.max(22, descLines.length * 13 + 8);
+    if (y > 700) { pdf.addPage(); y = 55; }
+  });
+  y += 8; pdf.line(360, y, pageWidth - margin, y); y += 20;
+  addText('Subtotal', 390, y, 9, muted); addText(invoiceMoney(subtotal, invoice.currency), pageWidth - margin, y, 10, ink, { align: 'right' }); y += 16;
+  addText(`Tax (${Number(invoice.taxRate || 0).toFixed(2)}%)`, 390, y, 9, muted); addText(invoiceMoney(tax, invoice.currency), pageWidth - margin, y, 10, ink, { align: 'right' }); y += 21;
+  addText('TOTAL', 390, y, 12, ink, { bold: true }); addText(invoiceMoney(total, invoice.currency), pageWidth - margin, y, 13, blue, { bold: true, align: 'right' }); y += 34;
+  if (invoice.notes) { addText('NOTES', margin, y, 8, muted, { bold: true }); y += 14; y = addWrapped(invoice.notes, margin, y, 330, 9, muted) + 12; }
+  if (invoice.paymentMethods?.length) {
+    addText('PAYMENT OPTIONS', margin, y, 8, muted, { bold: true }); y += 18;
+    for (const method of invoice.paymentMethods) {
+      if (y > 680) { pdf.addPage(); y = 55; }
+      addText(method.name, margin, y + 18, 10, ink, { bold: true });
+      pdf.setFontSize(7);
+      pdf.setTextColor(...muted);
+      pdf.textWithLink(method.url, margin, y + 33, { url: method.url });
+      const qrHolder = document.createElement('div');
+      new QRCode(qrHolder, { text: method.url, width: 72, height: 72, correctLevel: QRCode.CorrectLevel.M });
+      const qrCanvas = qrHolder.querySelector('canvas') || qrHolder.querySelector('img');
+      if (qrCanvas) {
+        const data = qrCanvas.tagName === 'CANVAS' ? qrCanvas.toDataURL('image/png') : qrCanvas.src;
+        pdf.addImage(data, 'PNG', pageWidth - margin - 72, y, 72, 72);
+      }
+      y += 90;
+    }
+  }
+  pdf.setFontSize(8); pdf.setTextColor(...muted);
+  pdf.text('Thank you for your business.', margin, 755);
+  pdf.save(`invoice-${String(invoice.invoiceNumber || invoice.id).replace(/[^a-z0-9_-]/gi, '_')}.pdf`);
+};
+
+const saveInvoice = async (invoice) => {
+  const user = auth.currentUser;
+  const store = stores.find((item) => item.id === activeStorefrontId);
+  if (!user || !store || store.ownerUid !== user.uid) throw new Error('Only the storefront owner can create invoices.');
+  const data = {
+    ...invoice,
+    storeId: store.id,
+    ownerUid: user.uid,
+    updatedAt: serverTimestamp()
+  };
+  if (invoice.invoiceId) {
+    await updateDoc(doc(db, 'stores', store.id, 'invoices', invoice.invoiceId), data);
+    return { ...invoice, id: invoice.invoiceId, storeId: store.id, ownerUid: user.uid };
+  }
+  const refDoc = await addDoc(collection(db, 'stores', store.id, 'invoices'), { ...data, createdAt: serverTimestamp() });
+  return { ...invoice, id: refDoc.id, storeId: store.id, ownerUid: user.uid };
+};
+
 const renderStorefrontPage = (store) => {
   activeStorefrontId = store.id;
   const isOwner = Boolean(
@@ -842,6 +1107,15 @@ const renderStorefrontPage = (store) => {
     && auth.currentUser
     && store.ownerUid === auth.currentUser.uid
   );
+  if (isOwner) {
+    if (activeInvoiceStoreId !== store.id) subscribeToStoreInvoices(store.id);
+  } else {
+    if (invoicesUnsubscribe) invoicesUnsubscribe();
+    invoicesUnsubscribe = null;
+    activeInvoiceStoreId = null;
+    activeInvoices = [];
+    renderInvoiceList();
+  }
   const editor = document.querySelector('.storefront-editor');
   if (!isOwner) isManagingStorefront = false;
   manageStorefrontButton.classList.toggle('hidden', !isOwner);
@@ -2281,6 +2555,36 @@ storeTemplateForm.addEventListener('submit', async (event) => {
   } catch (error) {
     storeTemplateStatus.textContent = `Unable to save storefront: ${error.message}`;
     storeTemplateStatus.classList.add('error');
+  }
+});
+
+
+createInvoiceButton?.addEventListener('click', () => openInvoiceEditor());
+addInvoiceItem?.addEventListener('click', () => addInvoiceItemRow());
+addPaymentMethod?.addEventListener('click', () => addPaymentMethodRow());
+closeInvoiceModal?.addEventListener('click', () => closeModal(invoiceModal));
+cancelInvoice?.addEventListener('click', () => closeModal(invoiceModal));
+
+invoiceForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  invoiceStatus.textContent = '';
+  invoiceStatus.classList.remove('error');
+  try {
+    const invoice = collectInvoiceForm();
+    if (!invoice.customerName || !invoice.invoiceNumber || !invoice.items.length) {
+      throw new Error('Add a customer, invoice number, and at least one complete item.');
+    }
+    if (invoice.taxRate < 0 || invoice.taxRate > 100) throw new Error('Tax must be between 0 and 100%.');
+    for (const method of invoice.paymentMethods) {
+      if (!/^https?:\/\//i.test(method.url)) throw new Error('Payment links must start with http:// or https://.');
+    }
+    invoiceStatus.textContent = 'Saving invoice…';
+    const saved = await saveInvoice(invoice);
+    closeModal(invoiceModal);
+    await downloadInvoicePdf(saved);
+  } catch (error) {
+    invoiceStatus.textContent = `Unable to save invoice: ${error.message}`;
+    invoiceStatus.classList.add('error');
   }
 });
 
