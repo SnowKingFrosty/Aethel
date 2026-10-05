@@ -1616,6 +1616,50 @@ button {
   font-size: 0.65rem;
 }
 
+.room-message-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.room-message-row.mine {
+  justify-content: flex-end;
+}
+
+.room-message-row .chat-message {
+  align-self: auto;
+}
+
+.room-message-delete {
+  display: grid;
+  flex: 0 0 1.5rem;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid rgba(255, 122, 217, 0.25);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--pink);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.room-message-delete:hover {
+  background: rgba(255, 122, 217, 0.12);
+}
+
+.room-message-delete:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.room-message-status {
+  margin: 0;
+}
+
 .store-chat-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

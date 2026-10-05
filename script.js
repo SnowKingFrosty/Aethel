@@ -101,6 +101,7 @@ const roomTitleInput = document.getElementById('roomTitleInput');
 const roomDescriptionInput = document.getElementById('roomDescriptionInput');
 const roomStatus = document.getElementById('roomStatus');
 const roomMessageList = document.getElementById('roomMessageList');
+const roomMessageStatus = document.getElementById('roomMessageStatus');
 const roomMessageForm = document.getElementById('roomMessageForm');
 const roomMessageInput = document.getElementById('roomMessageInput');
 const roomSelectedGif = document.getElementById('roomSelectedGif');
@@ -670,10 +671,13 @@ const renderRoomMessages = () => {
     roomMessageList.append(createElement('p', 'store-chat-empty', 'Be the first to start the conversation.'));
     return;
   }
+  const currentRoom = rooms.find((room) => room.id === activeRoomId);
   activeRoomMessages.forEach((message) => {
+    const isMine = message.senderUid === auth.currentUser?.uid;
+    const row = createElement('div', `room-message-row${isMine ? ' mine' : ''}`);
     const bubble = createElement(
       'article',
-      `chat-message${message.senderUid === auth.currentUser?.uid ? ' mine' : ''}`
+      `chat-message${isMine ? ' mine' : ''}`
     );
     bubble.append(createElement('strong', 'room-message-author', message.senderUsername || 'Aethel member'));
     const gifUrl = isRoomGifUrl(message.gifUrl) ? message.gifUrl : getRoomGifUrl(message.gifId);
@@ -689,7 +693,30 @@ const renderRoomMessages = () => {
       ? message.createdAt.toDate()
       : new Date(message.createdAt || Date.now());
     bubble.append(createElement('time', '', timestamp.toLocaleString()));
-    roomMessageList.append(bubble);
+    const user = auth.currentUser;
+    if (user && (message.senderUid === user.uid || currentRoom?.ownerUid === user.uid)) {
+      const deleteButton = createElement('button', 'room-message-delete', '×');
+      deleteButton.type = 'button';
+      deleteButton.setAttribute('aria-label', `Delete message from ${message.senderUsername || 'Aethel member'}`);
+      deleteButton.title = 'Delete message';
+      deleteButton.addEventListener('click', async () => {
+        if (!window.confirm('Delete this message? This cannot be undone.')) return;
+        deleteButton.disabled = true;
+        roomMessageStatus.textContent = '';
+        roomMessageStatus.classList.remove('error');
+        try {
+          await deleteDoc(doc(db, 'rooms', activeRoomId, 'messages', message.id));
+        } catch (error) {
+          roomMessageStatus.textContent = `Unable to delete message: ${error.message}`;
+          roomMessageStatus.classList.add('error');
+          deleteButton.disabled = false;
+        }
+      });
+      row.append(bubble, deleteButton);
+    } else {
+      row.append(bubble);
+    }
+    roomMessageList.append(row);
   });
   roomMessageList.scrollTop = roomMessageList.scrollHeight;
 };
@@ -713,6 +740,8 @@ const openRoomPage = (room) => {
   roomBannerInput.value = '';
   roomStatus.textContent = '';
   roomStatus.classList.remove('error');
+  roomMessageStatus.textContent = '';
+  roomMessageStatus.classList.remove('error');
   roomMemberHint.textContent = isAuthenticated ? 'Messages are shared with everyone in this room' : 'Sign in to send messages';
   selectedRoomGif = null;
   roomSelectedGif.classList.add('hidden');
@@ -2429,6 +2458,7 @@ onSnapshot(collection(db, 'rooms'), (snapshot) => {
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     setLoggedOut();
+    if (activeRoomId) renderRoomMessages();
     if (signingOutForInactivity) {
       signingOutForInactivity = false;
       authStatus.textContent = 'You were signed out after 30 minutes of inactivity. Please sign in again.';
