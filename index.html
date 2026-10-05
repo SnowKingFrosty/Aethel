@@ -181,33 +181,14 @@
           </div>
           <div class="store-chat-thread room-chat-thread" id="roomMessageList" role="log" aria-live="polite"></div>
           <div class="room-chat-composer">
-            <div class="room-chat-picker hidden" id="roomChatPicker">
-              <div class="room-chat-picker-tabs" role="tablist" aria-label="Message extras">
-                <button type="button" class="room-chat-picker-tab active" data-chat-picker-tab="emoji" role="tab" aria-selected="true">Emoji</button>
-                <button type="button" class="room-chat-picker-tab" data-chat-picker-tab="gif" role="tab" aria-selected="false">GIFs</button>
-              </div>
-              <div class="room-emoji-grid" id="roomEmojiGrid" role="tabpanel" aria-label="Choose an emoji"></div>
-              <div class="room-gif-panel hidden" id="roomGifPanel" role="tabpanel" aria-label="Search and choose a GIF">
-                <form class="room-gif-search" id="roomGifSearchForm">
-                  <label class="visually-hidden" for="roomGifSearchInput">Search GIFs with Klipy</label>
-                  <input id="roomGifSearchInput" type="search" maxlength="80" placeholder="Search GIFs..." />
-                  <button type="submit" class="secondary-btn">Search</button>
-                </form>
-                <p class="room-gif-search-status" id="roomGifSearchStatus" aria-live="polite">Loading trending GIFs...</p>
-                <div class="room-gif-grid" id="roomGifGrid"></div>
-                <a class="room-gif-attribution" href="https://klipy.com" target="_blank" rel="noopener noreferrer">GIFs powered by KLIPY</a>
-              </div>
-            </div>
             <div class="room-selected-gif hidden" id="roomSelectedGif">
               <img id="roomSelectedGifImage" alt="Selected GIF preview" />
-              <span>GIF ready to send</span>
+              <span id="roomSelectedGifStatus">GIF ready to send</span>
               <button type="button" class="room-remove-gif" id="removeRoomGif" aria-label="Remove selected GIF">×</button>
             </div>
             <form class="store-chat-form room-chat-form" id="roomMessageForm">
-              <button type="button" class="room-chat-tool" id="roomEmojiButton" aria-label="Open emoji menu" aria-expanded="false">😊</button>
-              <button type="button" class="room-chat-tool room-gif-tool" id="roomGifButton" aria-label="Open GIF menu" aria-expanded="false">GIF</button>
               <label class="visually-hidden" for="roomMessageInput">Message this room</label>
-              <input id="roomMessageInput" name="message" type="text" maxlength="500" placeholder="Write a message..." />
+              <input id="roomMessageInput" name="message" type="text" maxlength="500" placeholder="Write a message or paste a GIF..." />
               <button type="submit" class="primary-btn">Send</button>
             </form>
           </div>

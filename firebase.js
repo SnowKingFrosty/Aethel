@@ -33,7 +33,6 @@ import {
   ref,
   uploadBytes
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js';
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBOVzDSqrPSqwm6AFCNbu91IKK4yy0gCqM',
@@ -49,7 +48,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const functions = getFunctions(app, 'us-central1');
 
 export {
   EmailAuthProvider,
@@ -63,7 +61,6 @@ export {
   getDoc,
   getDownloadURL,
   getDocs,
-  httpsCallable,
   onAuthStateChanged,
   onSnapshot,
   query,

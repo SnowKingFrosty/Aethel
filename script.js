@@ -12,8 +12,6 @@ import {
   getDoc,
   getDocs,
   getDownloadURL,
-  functions,
-  httpsCallable,
   onAuthStateChanged,
   onSnapshot,
   query,
@@ -105,17 +103,9 @@ const roomStatus = document.getElementById('roomStatus');
 const roomMessageList = document.getElementById('roomMessageList');
 const roomMessageForm = document.getElementById('roomMessageForm');
 const roomMessageInput = document.getElementById('roomMessageInput');
-const roomChatPicker = document.getElementById('roomChatPicker');
-const roomEmojiGrid = document.getElementById('roomEmojiGrid');
-const roomGifPanel = document.getElementById('roomGifPanel');
-const roomGifGrid = document.getElementById('roomGifGrid');
-const roomGifSearchForm = document.getElementById('roomGifSearchForm');
-const roomGifSearchInput = document.getElementById('roomGifSearchInput');
-const roomGifSearchStatus = document.getElementById('roomGifSearchStatus');
 const roomSelectedGif = document.getElementById('roomSelectedGif');
 const roomSelectedGifImage = document.getElementById('roomSelectedGifImage');
-const roomEmojiButton = document.getElementById('roomEmojiButton');
-const roomGifButton = document.getElementById('roomGifButton');
+const roomSelectedGifStatus = document.getElementById('roomSelectedGifStatus');
 const roomMemberHint = document.getElementById('roomMemberHint');
 const createRoomModal = document.getElementById('createRoomModal');
 const createRoomForm = document.getElementById('createRoomForm');
@@ -167,7 +157,6 @@ const socialServices = [
   { domains: ['pinterest.com'], name: 'Pinterest', icon: 'pinterest' }
 ];
 
-const roomEmojis = ['😀', '😂', '🥹', '😍', '🤔', '🙌', '👏', '👍', '👀', '🔥', '🎉', '💯', '❤️', '✨', '🚀', '💜'];
 const roomGifs = [
   { id: '1f44b', label: 'Waving hand' },
   { id: '1f44d', label: 'Thumbs up' },
@@ -181,16 +170,34 @@ const roomGifs = [
 const getRoomGifUrl = (gifId) => roomGifs.some((gif) => gif.id === gifId)
   ? `https://fonts.gstatic.com/s/e/notoemoji/latest/${gifId}/512.gif`
   : '';
-const isKlipyGifUrl = (url) => {
+const isRoomGifUrl = (url) => {
   if (typeof url !== 'string') return false;
   try {
     const parsedUrl = new URL(url);
-    return parsedUrl.protocol === 'https:' && parsedUrl.hostname === 'static.klipy.com';
+    return parsedUrl.protocol === 'https:'
+      && (
+        parsedUrl.hostname === 'static.klipy.com'
+        || parsedUrl.hostname === 'firebasestorage.googleapis.com'
+        || parsedUrl.pathname.toLowerCase().endsWith('.gif')
+      );
   } catch {
     return false;
   }
 };
-const searchKlipyGifs = httpsCallable(functions, 'searchKlipyGifs');
+const getPastedRoomGifUrl = (clipboardData) => {
+  const html = clipboardData.getData('text/html');
+  const htmlUrl = html
+    ? new DOMParser().parseFromString(html, 'text/html').querySelector('img[src]')?.src
+    : '';
+  const textUrl = (clipboardData.getData('text/uri-list') || clipboardData.getData('text/plain'))
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith('#'));
+  for (const candidate of [htmlUrl, textUrl]) {
+    if (candidate && isRoomGifUrl(candidate)) return new URL(candidate).href;
+  }
+  return '';
+};
 
 const readStoredValue = (key, fallback) => {
   try {
@@ -218,11 +225,7 @@ let rooms = [];
 let activeRoomId = null;
 let activeRoomMessages = [];
 let activeRoomMessageUnsubscribe = null;
-let selectedRoomGif = '';
-let roomGifResults = [];
-let roomGifLastQuery = null;
-let roomGifSearchSequence = 0;
-let roomGifSearchTimer = null;
+let selectedRoomGif = null;
 let isManagingRoom = false;
 const inactivityLimitMs = 30 * 60 * 1000;
 let inactivityTimeoutId = null;
@@ -673,7 +676,7 @@ const renderRoomMessages = () => {
       `chat-message${message.senderUid === auth.currentUser?.uid ? ' mine' : ''}`
     );
     bubble.append(createElement('strong', 'room-message-author', message.senderUsername || 'Aethel member'));
-    const gifUrl = isKlipyGifUrl(message.gifUrl) ? message.gifUrl : getRoomGifUrl(message.gifId);
+    const gifUrl = isRoomGifUrl(message.gifUrl) ? message.gifUrl : getRoomGifUrl(message.gifId);
     if (gifUrl) {
       const image = createElement('img', 'room-chat-gif');
       image.src = gifUrl;
@@ -689,39 +692,6 @@ const renderRoomMessages = () => {
     roomMessageList.append(bubble);
   });
   roomMessageList.scrollTop = roomMessageList.scrollHeight;
-};
-
-const loadRoomGifs = async (queryText = '') => {
-  const requestSequence = ++roomGifSearchSequence;
-  roomGifSearchStatus.textContent = queryText ? 'Searching KLIPY...' : 'Loading trending GIFs...';
-  roomGifGrid.replaceChildren();
-  try {
-    const response = await searchKlipyGifs({ query: queryText });
-    if (requestSequence !== roomGifSearchSequence) return;
-    roomGifResults = (Array.isArray(response.data?.gifs) ? response.data.gifs : [])
-      .filter((gif) => gif && typeof gif.id === 'string' && isKlipyGifUrl(gif.url));
-    roomGifResults.forEach((gif) => {
-      const button = createElement('button', 'room-gif-option');
-      button.type = 'button';
-      button.dataset.chatGif = gif.id;
-      button.setAttribute('aria-label', `Select ${gif.title || 'GIF'}`);
-      const image = createElement('img');
-      image.src = gif.url;
-      image.alt = '';
-      image.loading = 'lazy';
-      button.append(image, createElement('span', '', gif.title || 'GIF'));
-      roomGifGrid.append(button);
-    });
-    roomGifSearchStatus.textContent = roomGifResults.length
-      ? `${roomGifResults.length} GIFs from KLIPY`
-      : 'No GIFs found. Try another search.';
-    roomGifLastQuery = queryText;
-  } catch (error) {
-    if (requestSequence !== roomGifSearchSequence) return;
-    roomGifResults = [];
-    roomGifLastQuery = null;
-    roomGifSearchStatus.textContent = `Unable to load KLIPY GIFs: ${error.message}`;
-  }
 };
 
 const openRoomPage = (room) => {
@@ -744,15 +714,11 @@ const openRoomPage = (room) => {
   roomStatus.textContent = '';
   roomStatus.classList.remove('error');
   roomMemberHint.textContent = isAuthenticated ? 'Messages are shared with everyone in this room' : 'Sign in to send messages';
-  selectedRoomGif = '';
-  roomGifSearchInput.value = '';
-  roomGifLastQuery = null;
+  selectedRoomGif = null;
   roomSelectedGif.classList.add('hidden');
+  roomSelectedGifImage.removeAttribute('src');
+  roomSelectedGifStatus.textContent = 'GIF ready to send';
   roomMessageInput.value = '';
-  roomChatPicker.classList.add('hidden');
-  roomEmojiButton.setAttribute('aria-expanded', 'false');
-  roomGifButton.setAttribute('aria-expanded', 'false');
-  roomGifGrid.replaceChildren();
   closeModal(createRoomModal);
   roomPage.classList.remove('hidden');
   roomPage.setAttribute('aria-hidden', 'false');
@@ -1603,117 +1569,66 @@ const bindLoginModal = () => {
   createRoomModal.addEventListener('click', (event) => {
     if (event.target === createRoomModal) closeModal(createRoomModal);
   });
-  roomEmojis.forEach((emoji) => {
-    const button = createElement('button', 'room-emoji-option', emoji);
-    button.type = 'button';
-    button.dataset.chatEmoji = emoji;
-    button.setAttribute('aria-label', `Insert ${emoji}`);
-    roomEmojiGrid.append(button);
-  });
-  const openRoomPicker = (tab) => {
-    const isOpen = !roomChatPicker.classList.contains('hidden');
-    const sameTab = (tab === 'emoji' && !roomEmojiGrid.classList.contains('hidden'))
-      || (tab === 'gif' && !roomGifPanel.classList.contains('hidden'));
-    if (isOpen && sameTab) {
-      roomChatPicker.classList.add('hidden');
-      roomEmojiButton.setAttribute('aria-expanded', 'false');
-      roomGifButton.setAttribute('aria-expanded', 'false');
+  roomMessageInput.addEventListener('paste', async (event) => {
+    const clipboardData = event.clipboardData;
+    if (!clipboardData) return;
+    const gifUrl = getPastedRoomGifUrl(clipboardData);
+    if (gifUrl) {
+      event.preventDefault();
+      selectedRoomGif = { url: gifUrl, title: 'Pasted GIF' };
+      roomSelectedGifImage.src = gifUrl;
+      roomSelectedGifStatus.textContent = 'GIF ready to send';
+      roomSelectedGif.classList.remove('hidden');
       return;
     }
-    roomChatPicker.classList.remove('hidden');
-    roomEmojiGrid.classList.toggle('hidden', tab !== 'emoji');
-    roomGifPanel.classList.toggle('hidden', tab !== 'gif');
-    document.querySelectorAll('[data-chat-picker-tab]').forEach((button) => {
-      const active = button.dataset.chatPickerTab === tab;
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-selected', String(active));
-    });
-    roomEmojiButton.setAttribute('aria-expanded', String(tab === 'emoji'));
-    roomGifButton.setAttribute('aria-expanded', String(tab === 'gif'));
-    if (tab === 'gif') {
-      if (!requireAuth('signin')) {
-        roomChatPicker.classList.add('hidden');
-        roomGifButton.setAttribute('aria-expanded', 'false');
-        return;
-      }
-      const queryText = roomGifSearchInput.value.trim();
-      if (roomGifLastQuery !== queryText) loadRoomGifs(queryText);
-    }
-  };
-  roomEmojiButton.addEventListener('click', () => openRoomPicker('emoji'));
-  roomGifButton.addEventListener('click', () => openRoomPicker('gif'));
-  roomGifSearchForm.addEventListener('submit', (event) => {
+
+    const clipboardFiles = [
+      ...Array.from(clipboardData.files || []),
+      ...Array.from(clipboardData.items || [])
+        .filter((item) => item.kind === 'file')
+        .map((item) => item.getAsFile())
+        .filter(Boolean)
+    ];
+    const gifFile = clipboardFiles.find((file) => file.type === 'image/gif');
+    if (!gifFile) return;
     event.preventDefault();
-    if (!requireAuth('signin')) return;
-    loadRoomGifs(roomGifSearchInput.value.trim());
-  });
-  roomGifSearchInput.addEventListener('input', () => {
-    window.clearTimeout(roomGifSearchTimer);
-    if (!requireAuth('signin')) return;
-    roomGifSearchTimer = window.setTimeout(() => {
-      const queryText = roomGifSearchInput.value.trim();
-      if (queryText.length >= 2 || queryText.length === 0) loadRoomGifs(queryText);
-      else {
-        roomGifSearchStatus.textContent = 'Enter at least 2 characters to search.';
-        roomGifGrid.replaceChildren();
-      }
-    }, 400);
-  });
-  roomChatPicker.addEventListener('click', (event) => {
-    const tab = event.target.closest('[data-chat-picker-tab]');
-    if (tab) {
-      const pickerTab = tab.dataset.chatPickerTab;
-      roomEmojiGrid.classList.toggle('hidden', pickerTab !== 'emoji');
-      roomGifPanel.classList.toggle('hidden', pickerTab !== 'gif');
-      roomChatPicker.querySelectorAll('[data-chat-picker-tab]').forEach((button) => {
-        const active = button === tab;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-selected', String(active));
-      });
-      roomEmojiButton.setAttribute('aria-expanded', String(pickerTab === 'emoji'));
-      roomGifButton.setAttribute('aria-expanded', String(pickerTab === 'gif'));
-      if (pickerTab === 'gif') {
-        if (!requireAuth('signin')) {
-          roomChatPicker.classList.add('hidden');
-          roomGifButton.setAttribute('aria-expanded', 'false');
-          return;
-        }
-        const queryText = roomGifSearchInput.value.trim();
-        if (roomGifLastQuery !== queryText) loadRoomGifs(queryText);
-      }
+    if (!auth.currentUser) {
+      requireAuth('signin');
       return;
     }
-    const emojiButton = event.target.closest('[data-chat-emoji]');
-    if (emojiButton) {
-      const input = roomMessageInput;
-      const start = input.selectionStart ?? input.value.length;
-      const end = input.selectionEnd ?? start;
-      input.setRangeText(emojiButton.dataset.chatEmoji, start, end, 'end');
-      input.focus();
+    if (gifFile.size > 2 * 1024 * 1024) {
+      roomStatus.textContent = 'GIFs must be 2 MB or smaller.';
+      roomStatus.classList.add('error');
       return;
     }
-    const gifButton = event.target.closest('[data-chat-gif]');
-    if (!gifButton) return;
-    selectedRoomGif = roomGifResults.find((gif) => gif.id === gifButton.dataset.chatGif) || null;
-    if (!selectedRoomGif) return;
-    roomSelectedGifImage.src = selectedRoomGif.url;
+
+    const pendingGif = { url: '', title: 'Pasted GIF', uploading: true };
+    selectedRoomGif = pendingGif;
+    roomSelectedGifImage.removeAttribute('src');
+    roomSelectedGifStatus.textContent = 'Adding GIF...';
     roomSelectedGif.classList.remove('hidden');
-    roomChatPicker.classList.add('hidden');
-    roomEmojiButton.setAttribute('aria-expanded', 'false');
-    roomGifButton.setAttribute('aria-expanded', 'false');
-    roomMessageInput.focus();
+    try {
+      const gifRef = ref(storage, `users/${auth.currentUser.uid}/chat-gifs/${crypto.randomUUID()}.gif`);
+      await uploadBytes(gifRef, gifFile, { contentType: 'image/gif' });
+      pendingGif.url = await getDownloadURL(gifRef);
+      pendingGif.uploading = false;
+      if (selectedRoomGif === pendingGif) {
+        roomSelectedGifImage.src = pendingGif.url;
+        roomSelectedGifStatus.textContent = 'GIF ready to send';
+      }
+    } catch (error) {
+      if (selectedRoomGif === pendingGif) {
+        selectedRoomGif = null;
+        roomSelectedGif.classList.add('hidden');
+      }
+      roomStatus.textContent = `Unable to add GIF: ${error.message}`;
+      roomStatus.classList.add('error');
+    }
   });
   document.getElementById('removeRoomGif').addEventListener('click', () => {
-    selectedRoomGif = '';
+    selectedRoomGif = null;
     roomSelectedGif.classList.add('hidden');
     roomSelectedGifImage.removeAttribute('src');
-  });
-  document.addEventListener('click', (event) => {
-    if (roomChatPicker.classList.contains('hidden')) return;
-    if (event.target.closest('.room-chat-composer')) return;
-    roomChatPicker.classList.add('hidden');
-    roomEmojiButton.setAttribute('aria-expanded', 'false');
-    roomGifButton.setAttribute('aria-expanded', 'false');
   });
   roomList.addEventListener('click', (event) => {
     const card = event.target.closest('[data-room-id]');
@@ -1897,6 +1812,11 @@ const bindLoginModal = () => {
     if (!activeRoomId || !auth.currentUser) return;
     const text = roomMessageInput.value.trim();
     if (!text && !selectedRoomGif) return;
+    if (selectedRoomGif?.uploading) {
+      roomStatus.textContent = 'Wait for the GIF to finish uploading.';
+      roomStatus.classList.add('error');
+      return;
+    }
     try {
       await addDoc(collection(db, 'rooms', activeRoomId, 'messages'), {
         senderUid: auth.currentUser.uid,
@@ -1904,15 +1824,15 @@ const bindLoginModal = () => {
         text,
         ...(selectedRoomGif ? {
           gifUrl: selectedRoomGif.url,
-          gifTitle: selectedRoomGif.title || 'KLIPY GIF'
+          gifTitle: selectedRoomGif.title || 'Pasted GIF'
         } : {}),
         createdAt: serverTimestamp()
       });
       roomMessageForm.reset();
-      selectedRoomGif = '';
+      selectedRoomGif = null;
       roomSelectedGif.classList.add('hidden');
       roomSelectedGifImage.removeAttribute('src');
-      roomChatPicker.classList.add('hidden');
+      roomSelectedGifStatus.textContent = 'GIF ready to send';
     } catch (error) {
       roomStatus.textContent = `Unable to send message: ${error.message}`;
       roomStatus.classList.add('error');

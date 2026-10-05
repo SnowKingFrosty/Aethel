@@ -97,7 +97,11 @@ service cloud.firestore {
             || (
               request.resource.data.keys().hasAny(['gifUrl'])
               && request.resource.data.gifUrl is string
-              && request.resource.data.gifUrl.matches('https://static[.]klipy[.]com/.*')
+              && (
+                request.resource.data.gifUrl.matches('https://static[.]klipy[.]com/.*')
+                || request.resource.data.gifUrl.matches('https://firebasestorage[.]googleapis[.]com/.*')
+                || request.resource.data.gifUrl.matches('https://.*[.]gif([?].*)?')
+              )
             )
             || (
               request.resource.data.keys().hasAny(['gifId'])
@@ -111,7 +115,11 @@ service cloud.firestore {
             !request.resource.data.keys().hasAny(['gifUrl'])
             || (
               request.resource.data.gifUrl is string
-              && request.resource.data.gifUrl.matches('https://static[.]klipy[.]com/.*')
+              && (
+                request.resource.data.gifUrl.matches('https://static[.]klipy[.]com/.*')
+                || request.resource.data.gifUrl.matches('https://firebasestorage[.]googleapis[.]com/.*')
+                || request.resource.data.gifUrl.matches('https://.*[.]gif([?].*)?')
+              )
             )
           )
           && (

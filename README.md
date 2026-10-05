@@ -21,13 +21,4 @@ Before using cloud features:
    python3 -m http.server 8000
    ```
 
-The app reports Firebase connection and permission errors in its status banner. Room chat includes an emoji picker and searchable KLIPY GIFs. The KLIPY key is kept in a Firebase Functions secret and is never sent to the browser. Configure and deploy the GIF search function with:
-
-```sh
-firebase functions:secrets:set KLIPY_API_KEY
-firebase deploy --only functions:searchKlipyGifs,firestore:rules
-```
-
-When prompted, enter the app key issued by KLIPY. GIF search requires a signed-in Aethel account. Profile, storefront, chat-room, post, and chat data is stored in Firestore; uploaded images and videos are stored in Cloud Storage so they do not exceed Firestore's document-size limit.
-
-Firebase Functions deployment requires the project to be on the Blaze (pay-as-you-go) plan. The function limits each request to 24 GIF results and only returns HTTPS media hosted by `static.klipy.com`.
+The app reports Firebase connection and permission errors in its status banner. Room chat accepts emoji input from the device keyboard and GIFs pasted as HTTPS `.gif` links or animated GIF files. Pasted GIF files are stored in Cloud Storage (up to 2 MB); no Klipy API key or Firebase Function is required. Profile, storefront, chat-room, post, and chat data is stored in Firestore; uploaded images and videos are stored in Cloud Storage so they do not exceed Firestore's document-size limit.
