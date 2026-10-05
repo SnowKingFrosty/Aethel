@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A social storefront platform where creators launch products, accept payments, and collaborate in rooms."
+    />
+    <title>Aethel | Web design & web development</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-wrap">
+          <div class="brand-mark">A</div>
+          <div>
+            <div class="brand-name">Aethel</div>
+            <div class="brand-tag">Web design & dev</div>
+          </div>
+        </div>
+
+        <nav class="topnav" aria-label="Main navigation">
+          <a href="#feed">Discover</a>
+        </nav>
+
+        <div class="top-actions">
+          <button class="ghost-btn" id="loginButton">Log in</button>
+          <button class="ghost-btn hidden" id="logoutButton">Log out</button>
+          <button class="ghost-btn hidden" id="accountButton">Account</button>
+          <button class="secondary-btn hidden" id="manageStoresButton">Manage storefronts</button>
+          <button class="secondary-btn hidden" id="managePostsButton">Manage posts</button>
+          <button class="primary-btn" id="newStoreButton">New storefront</button>
+        </div>
+      </header>
+      <div class="cloud-status hidden" id="cloudStatus" role="status" aria-live="polite"></div>
+
+      <main class="layout">
+        <aside class="sidebar left-sidebar">
+          <section class="glass-card profile-panel" aria-labelledby="profileName">
+            <div class="avatar profile-avatar" id="profileAvatar" aria-hidden="true">?</div>
+            <div class="profile-summary">
+              <strong id="profileName">Your profile</strong>
+              <span id="profileHandle">Sign in to set up your creator profile</span>
+              <span class="profile-account-type hidden" id="profileAccountType"></span>
+            </div>
+            <div class="social-links profile-social-links" id="profileSocialLinks" aria-label="Creator social links"></div>
+            <button type="button" class="ghost-btn profile-action" id="profileLoginButton">Sign in</button>
+            <button type="button" class="ghost-btn profile-action hidden" id="profileEditButton">Edit profile</button>
+            <button type="button" class="primary-btn profile-action hidden" id="becomeCreatorButton">Become a creator</button>
+          </section>
+
+          <div class="glass-card storefront-panel" id="storefronts">
+            <div class="panel-header">
+              <div class="panel-title">Your storefronts</div>
+              <button class="tiny-btn" id="newStoreMiniButton">+ New</button>
+            </div>
+
+            <div class="store-list" id="storeList">
+              <div class="empty-state" id="emptyStoreState">
+                No storefronts yet. Create your first web design or development service package.
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card panel mini-panel">
+            <div class="panel-title">Popular services</div>
+            <div class="tag-row">
+              <span>Web Design</span>
+              <span>Web Dev</span>
+              <span>Landing Pages</span>
+              <span>E-commerce</span>
+              <span>Brand Sites</span>
+            </div>
+          </div>
+        </aside>
+
+        <section class="feed-column" id="feed">
+          <div class="composer glass-card">
+            <div class="avatar small" id="composerAvatar">?</div>
+            <button type="button" class="composer-box" id="openPostModalButton">Share a project, offer, or ad...</button>
+            <button type="button" class="primary-btn small-btn" id="createPostButton">Publish</button>
+          </div>
+
+          <div class="story-strip glass-card" role="group" aria-label="Discover feed filter">
+            <button type="button" class="story active" data-feed-filter="all">For you</button>
+            <button type="button" class="story" data-feed-filter="rooms">Rooms</button>
+          </div>
+
+          <form class="discover-search" id="discoverSearchForm" role="search">
+            <label class="visually-hidden" for="discoverSearchInput">Search Discover posts</label>
+            <input id="discoverSearchInput" type="search" placeholder="Search posts, creators, or storefronts" autocomplete="off" />
+            <button type="button" class="clear-search hidden" id="clearDiscoverSearch" aria-label="Clear Discover search">×</button>
+            <span class="visually-hidden" id="discoverSearchStatus" aria-live="polite"></span>
+          </form>
+
+          <div class="post-list" id="discoverFeed" aria-live="polite">
+            <article class="post-card glass-card empty-feed-card" id="feedEmptyState">
+              <div class="empty-post">
+                <h2>Your Discover feed is ready</h2>
+                <p>Share a project, promote an offer, and link it to a storefront so people can shop.</p>
+                <button type="button" class="primary-btn small-btn" id="feedCreatePost">Create a post</button>
+              </div>
+            </article>
+            <section class="glass-card panel rooms-feed-panel hidden" id="projectRoomsPanel" aria-labelledby="projectRoomsTitle">
+              <div class="panel-header rooms-panel-heading">
+                <div>
+                  <div class="panel-title" id="projectRoomsTitle">Chat rooms</div>
+                  <p class="rooms-panel-copy">Join a conversation or create a room around your next project.</p>
+                </div>
+                <button class="primary-btn small-btn" id="newRoomButton">+ Create room</button>
+              </div>
+              <div class="room-list" id="roomList">
+                <div class="empty-room-card">No chat rooms yet. Create one to start a conversation.</div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <main class="room-page hidden" id="roomPage" aria-hidden="true">
+      <header class="storefront-page-nav room-page-nav">
+        <button type="button" class="secondary-btn" id="closeRoomPage">← Back to Rooms</button>
+        <span class="storefront-page-label">Aethel chat room</span>
+        <button type="button" class="primary-btn hidden" id="manageRoomButton" aria-expanded="false">Manage room</button>
+      </header>
+      <div class="room-page-content">
+        <section class="storefront-hero room-hero" id="roomHero">
+          <img class="storefront-banner hidden" id="roomBanner" alt="" />
+          <div class="storefront-hero-shade"></div>
+          <div class="room-hero-copy">
+            <p class="template-eyebrow">Aethel chat room</p>
+            <h1 id="roomPageTitle">Chat room</h1>
+            <p id="roomPageDescription"></p>
+            <span id="roomCreatorName"></span>
+          </div>
+        </section>
+        <section class="room-manager glass-card hidden" id="roomManager">
+          <div class="storefront-editor-heading">
+            <div>
+              <p class="template-eyebrow">Room settings</p>
+              <h2>Customize your room</h2>
+            </div>
+            <div class="room-manager-actions">
+              <button type="button" class="danger-btn" id="deleteRoomButton">Delete room</button>
+              <button type="button" class="primary-btn" id="saveRoomSettings">Save changes</button>
+            </div>
+          </div>
+          <div class="room-customization-grid">
+            <label class="storefront-file-picker">
+              <input id="roomBannerInput" type="file" accept="image/*" />
+              <span class="storefront-file-picker-action"><span class="upload-plus" aria-hidden="true">+</span><span>Add Banner</span></span>
+            </label>
+            <p class="helper-text">Image banner up to 2 MB.</p>
+            <label>
+              <span>Room title</span>
+              <input id="roomTitleInput" type="text" maxlength="70" />
+            </label>
+            <label>
+              <span>Room description</span>
+              <textarea id="roomDescriptionInput" rows="3" maxlength="300"></textarea>
+            </label>
+          </div>
+          <p class="account-status" id="roomStatus" aria-live="polite"></p>
+        </section>
+        <section class="room-chat-panel glass-card">
+          <div class="room-chat-heading">
+            <div>
+              <p class="template-eyebrow">Live conversation</p>
+              <h2>Room chat</h2>
+            </div>
+            <span id="roomMemberHint">Sign in to send messages</span>
+          </div>
+          <div class="store-chat-thread room-chat-thread" id="roomMessageList" role="log" aria-live="polite"></div>
+          <div class="room-chat-composer">
+            <div class="room-chat-picker hidden" id="roomChatPicker">
+              <div class="room-chat-picker-tabs" role="tablist" aria-label="Message extras">
+                <button type="button" class="room-chat-picker-tab active" data-chat-picker-tab="emoji" role="tab" aria-selected="true">Emoji</button>
+                <button type="button" class="room-chat-picker-tab" data-chat-picker-tab="gif" role="tab" aria-selected="false">GIFs</button>
+              </div>
+              <div class="room-emoji-grid" id="roomEmojiGrid" role="tabpanel" aria-label="Choose an emoji"></div>
+              <div class="room-gif-panel hidden" id="roomGifPanel" role="tabpanel" aria-label="Search and choose a GIF">
+                <form class="room-gif-search" id="roomGifSearchForm">
+                  <label class="visually-hidden" for="roomGifSearchInput">Search GIFs with Klipy</label>
+                  <input id="roomGifSearchInput" type="search" maxlength="80" placeholder="Search GIFs..." />
+                  <button type="submit" class="secondary-btn">Search</button>
+                </form>
+                <p class="room-gif-search-status" id="roomGifSearchStatus" aria-live="polite">Loading trending GIFs...</p>
+                <div class="room-gif-grid" id="roomGifGrid"></div>
+                <a class="room-gif-attribution" href="https://klipy.com" target="_blank" rel="noopener noreferrer">GIFs powered by KLIPY</a>
+              </div>
+            </div>
+            <div class="room-selected-gif hidden" id="roomSelectedGif">
+              <img id="roomSelectedGifImage" alt="Selected GIF preview" />
+              <span>GIF ready to send</span>
+              <button type="button" class="room-remove-gif" id="removeRoomGif" aria-label="Remove selected GIF">×</button>
+            </div>
+            <form class="store-chat-form room-chat-form" id="roomMessageForm">
+              <button type="button" class="room-chat-tool" id="roomEmojiButton" aria-label="Open emoji menu" aria-expanded="false">😊</button>
+              <button type="button" class="room-chat-tool room-gif-tool" id="roomGifButton" aria-label="Open GIF menu" aria-expanded="false">GIF</button>
+              <label class="visually-hidden" for="roomMessageInput">Message this room</label>
+              <input id="roomMessageInput" name="message" type="text" maxlength="500" placeholder="Write a message..." />
+              <button type="submit" class="primary-btn">Send</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="modal-overlay hidden" id="createRoomModal" aria-hidden="true">
+      <section class="store-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="createRoomTitle">
+        <button type="button" class="modal-close" id="closeCreateRoom" aria-label="Close room creation">×</button>
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <h2 id="createRoomTitle">Create a chat room</h2>
+        </div>
+        <form class="store-form" id="createRoomForm">
+          <label>
+            <span>Room title</span>
+            <input type="text" name="title" maxlength="70" placeholder="e.g. Portfolio feedback" required />
+          </label>
+          <label>
+            <span>What is this room about?</span>
+            <textarea name="description" rows="3" maxlength="300" placeholder="Set the topic and invite people into the conversation."></textarea>
+          </label>
+          <p class="account-status" id="createRoomStatus" aria-live="polite"></p>
+          <button type="submit" class="primary-btn full-width">Create room</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="deleteRoomConfirmModal" aria-hidden="true">
+      <section class="room-delete-confirm glass-card" role="alertdialog" aria-modal="true" aria-labelledby="deleteRoomConfirmTitle" aria-describedby="deleteRoomConfirmMessage">
+        <h2 id="deleteRoomConfirmTitle">Delete chat room?</h2>
+        <p id="deleteRoomConfirmMessage">Are you sure? All info in this chat will be lost permamently.</p>
+        <p class="account-status" id="deleteRoomStatus" aria-live="polite"></p>
+        <div class="room-delete-confirm-actions">
+          <button type="button" class="secondary-btn" id="cancelDeleteRoom">No</button>
+          <button type="button" class="danger-btn" id="confirmDeleteRoom">Yes</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="firstVisitWelcome" aria-hidden="true">
+      <section class="welcome-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+        <div class="welcome-brand-lockup">
+          <div class="brand-mark">A</div>
+          <span>Aethel</span>
+        </div>
+        <p class="welcome-eyebrow">A community for independent web creators</p>
+        <h1 id="welcomeTitle">Welcome to Aethel</h1>
+        <p class="welcome-copy">What brings you here today?</p>
+        <div class="welcome-choices">
+          <button type="button" class="welcome-choice" data-welcome-type="shopper">
+            <span class="welcome-choice-icon" aria-hidden="true">↗</span>
+            <strong>I'm here to browse</strong>
+            <span>Discover independent studios, services, and ideas.</span>
+          </button>
+          <button type="button" class="welcome-choice creator-choice" data-welcome-type="creator">
+            <span class="welcome-choice-icon" aria-hidden="true">✦</span>
+            <strong>I'm here to create</strong>
+            <span>Build your profile, share work, and open a storefront.</span>
+          </button>
+        </div>
+        <p class="welcome-footnote">Choose your starting point. You can browse either way.</p>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="loginModal" aria-hidden="true">
+      <div class="login-modal glass-card">
+        <button class="modal-close" id="closeLoginModal" aria-label="Close login">×</button>
+
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <h2 id="authTitle">Welcome back</h2>
+        </div>
+
+        <div class="auth-mode-toggle" aria-label="Authentication mode selector">
+          <button type="button" class="mode-tab active" data-auth-mode="signin">Sign in</button>
+          <button type="button" class="mode-tab" data-auth-mode="signup">Create account</button>
+        </div>
+        <p class="account-status error hidden" id="authStatus" role="alert"></p>
+
+        <form id="loginForm" class="login-form auth-panel">
+          <label>
+            <span>Email</span>
+            <input type="email" placeholder="you@example.com" required />
+          </label>
+
+          <label>
+            <span>Password</span>
+            <input type="password" placeholder="••••••••" required />
+          </label>
+
+          <div class="login-options">
+            <label class="remember-row">
+              <input type="checkbox" />
+              <span>Remember me</span>
+            </label>
+            <a href="#">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="primary-btn full-width">Sign in</button>
+        </form>
+
+        <form id="signupForm" class="signup-form auth-panel hidden">
+          <input id="signupAccountType" type="hidden" name="accountType" value="creator" />
+          <div class="signup-type-picker" role="group" aria-label="Account type">
+            <button type="button" class="signup-type-option active" data-signup-type="creator">Creator</button>
+            <button type="button" class="signup-type-option" data-signup-type="shopper">Shopper</button>
+          </div>
+          <p class="signup-type-description" id="signupTypeDescription">Set up your creator profile and share what you make.</p>
+          <div class="form-grid">
+            <label>
+              <span>Full name (private)</span>
+              <input type="text" name="fullName" placeholder="Jordan Lee" required />
+            </label>
+
+            <label>
+              <span>Username</span>
+              <input type="text" name="username" placeholder="@jordansites" required />
+            </label>
+          </div>
+
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" placeholder="jordan@studio.com" required />
+          </label>
+
+          <label>
+            <span>Password</span>
+            <input id="signupPassword" type="password" name="password" placeholder="Create a password" required />
+          </label>
+
+          <label>
+            <span>Confirm password</span>
+            <input id="signupConfirmPassword" type="password" placeholder="Type it again" aria-describedby="passwordMatchMessage" required />
+            <span class="password-match-message hidden" id="passwordMatchMessage" aria-live="polite"></span>
+          </label>
+
+          <div class="form-grid" id="creatorSignupFields">
+            <label>
+              <span>Role</span>
+              <select name="role">
+                <option>Web designer</option>
+                <option>Web developer</option>
+                <option>Creative studio</option>
+                <option>Freelancer</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Focus</span>
+              <select name="focus">
+                <option>Landing pages</option>
+                <option>E-commerce</option>
+                <option>Brand websites</option>
+                <option>Web apps</option>
+              </select>
+            </label>
+          </div>
+
+          <label id="creatorSpecialtiesField">
+            <span>Specialties</span>
+            <div class="tag-picker">
+              <span>UI Design</span>
+              <span>UX Strategy</span>
+              <span>WordPress</span>
+              <span>React</span>
+              <span>Shopify</span>
+            </div>
+          </label>
+
+          <button type="submit" class="primary-btn full-width">Create account</button>
+        </form>
+
+        <p class="signup-copy" id="authFooterText">
+          Need an account? <a href="#" id="createAccountLink">Create one</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="storeModal" aria-hidden="true">
+      <div class="store-modal glass-card">
+        <button class="modal-close" id="closeStoreModal" aria-label="Close storefront form">×</button>
+
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <h2 id="storeModalTitle">Create storefront</h2>
+        </div>
+
+        <form id="storeForm" class="store-form">
+          <input type="hidden" name="storeId" />
+          <label>
+            <span>Storefront name</span>
+            <input type="text" name="storeName" placeholder="Your storefront name" required maxlength="60" />
+          </label>
+          <button type="submit" class="primary-btn full-width" id="storeSubmitButton">Continue</button>
+        </form>
+      </div>
+    </div>
+
+    <main class="storefront-page hidden" id="storeTemplateModal" aria-hidden="true">
+      <header class="storefront-page-nav">
+        <button type="button" class="secondary-btn" id="closeStoreTemplate">← Back to Aethel</button>
+        <span class="storefront-page-label">Creator storefront</span>
+        <button type="button" class="primary-btn hidden" id="manageStorefrontButton" aria-expanded="false">Manage storefront</button>
+      </header>
+      <div class="storefront-page-content">
+        <section class="storefront-hero" id="storefrontHero">
+          <img class="storefront-banner hidden" id="storefrontBanner" alt="" />
+          <div class="storefront-hero-shade"></div>
+          <div class="storefront-hero-content">
+            <div class="storefront-logo" id="storefrontLogo">A</div>
+            <div>
+              <p class="template-eyebrow">Aethel storefront</p>
+              <h1 id="storeTemplateTitle">New storefront</h1>
+              <button type="button" class="secondary-btn storefront-message-button hidden" id="storefrontMessageButton">Message creator</button>
+            </div>
+          </div>
+          <div class="storefront-banner-profile">
+            <div class="social-links storefront-banner-socials" id="storefrontSocials" aria-label="Creator social links"></div>
+            <span class="storefront-banner-username" id="storefrontHandle"></span>
+          </div>
+        </section>
+
+        <div class="storefront-workspace">
+          <form id="storeTemplateForm" class="storefront-editor glass-card">
+            <input type="hidden" name="storeId" />
+            <div class="storefront-editor-heading">
+              <div>
+                <p class="template-eyebrow">Make it yours</p>
+                <h2>Set up your storefront</h2>
+              </div>
+              <button type="submit" class="primary-btn" id="publishStoreTemplate">Save storefront</button>
+            </div>
+            <section class="template-section storefront-branding-fields">
+              <h3>Shop branding</h3>
+              <label class="storefront-file-picker">
+                <input id="storeLogoInput" type="file" name="storeLogo" accept="image/*" />
+                <span class="storefront-file-picker-action"><span class="upload-plus" aria-hidden="true">+</span><span>Add Logo</span></span>
+              </label>
+              <label class="storefront-file-picker">
+                <input id="storeBannerInput" type="file" name="storeBanner" accept="image/*" />
+                <span class="storefront-file-picker-action"><span class="upload-plus" aria-hidden="true">+</span><span>Add Banner</span></span>
+              </label>
+              <p class="helper-text">Choose image files up to 2 MB each. Your banner appears across the top of this page.</p>
+            </section>
+            <section class="template-section">
+              <h3>About your studio</h3>
+              <button type="button" class="storefront-bio-action storefront-file-picker-action" id="storefrontBioAction" aria-expanded="false" aria-controls="storefrontBioEditor">
+                <span class="upload-plus" aria-hidden="true">+</span>
+                <span id="storefrontBioActionLabel">Add Bio</span>
+              </button>
+              <div class="storefront-bio-editor hidden" id="storefrontBioEditor">
+                <label>
+                  <span>Bio</span>
+                  <textarea name="storeBio" rows="4" maxlength="600" placeholder="What do you make, who do you help, and what makes your work yours?"></textarea>
+                </label>
+              </div>
+            </section>
+            <section class="template-section">
+              <h3>Show your work</h3>
+              <label class="storefront-file-picker storefront-media-picker">
+                <input id="storeTemplateMedia" type="file" name="storeMedia" accept="image/*,video/mp4,video/webm" multiple />
+                <span class="storefront-file-picker-action"><span class="upload-plus" aria-hidden="true">+</span><span>Post Photo Or Video</span></span>
+              </label>
+              <p class="helper-text">Add up to 6 images or short videos. Each file can be up to 2 MB.</p>
+              <div class="template-media-preview" id="storeTemplateMediaPreview"></div>
+            </section>
+            <section class="template-section">
+              <h3>Connect</h3>
+              <div class="social-link-fields" id="storeTemplateSocialLinks"></div>
+              <button type="button" class="secondary-btn add-social-link-btn" id="addStoreSocialLink">+ Profile URL</button>
+            </section>
+            <p class="account-status" id="storeTemplateStatus" aria-live="polite"></p>
+          </form>
+          <section class="storefront-posts-section">
+            <section class="storefront-about glass-card">
+              <p class="template-eyebrow">A little about</p>
+              <h2>About the studio</h2>
+              <p id="storefrontBio"></p>
+            </section>
+            <div class="storefront-posts-heading">
+              <div>
+                <p class="template-eyebrow">The portfolio</p>
+                <h2>Work and posts</h2>
+              </div>
+              <button type="button" class="primary-btn hidden" id="storefrontCreatePost">Create a post</button>
+            </div>
+            <div class="storefront-posts-grid" id="storefrontPosts"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <div class="modal-overlay hidden" id="storeDetailModal" aria-hidden="true">
+      <section class="detail-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="storeDetailTitle">
+        <button class="modal-close" id="closeStoreDetail" aria-label="Close storefront details">×</button>
+        <div id="storeDetailContent"></div>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="storeChatModal" aria-hidden="true">
+      <section class="store-chat-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="storeChatTitle">
+        <button class="modal-close" id="closeStoreChat" aria-label="Close storefront chat">×</button>
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <div>
+            <h2 id="storeChatTitle">Chat with creator</h2>
+            <p class="chat-store-context" id="chatStoreContext"></p>
+          </div>
+        </div>
+        <div class="store-chat-thread" id="storeChatThread" role="log" aria-live="polite"></div>
+        <form id="storeChatForm" class="store-chat-form">
+          <label class="visually-hidden" for="storeChatMessage">Your message</label>
+          <input id="storeChatMessage" name="message" type="text" maxlength="500" placeholder="Write a message..." required />
+          <button type="submit" class="primary-btn">Send</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="createPostModal" aria-hidden="true">
+      <section class="post-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="createPostTitle">
+        <button class="modal-close" id="closePostModal" aria-label="Close post composer">×</button>
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <h2 id="createPostTitle">Create a Discover post</h2>
+        </div>
+        <form id="postForm" class="store-form">
+          <label>
+            <span>Post type</span>
+            <select name="postType">
+              <option value="post">Creator post</option>
+              <option value="ad">Sponsored ad</option>
+            </select>
+          </label>
+          <label>
+            <span>Caption</span>
+            <textarea name="caption" rows="3" maxlength="300" placeholder="Show the work, explain the offer, or tell the story..." required></textarea>
+          </label>
+          <label>
+            <span>Photo or video</span>
+            <input type="file" name="media" accept="image/*,video/mp4,video/webm" required />
+          </label>
+          <p class="helper-text">Use an image or a short MP4/WebM clip up to 2 MB in this browser prototype.</p>
+          <label>
+            <span>Link to a storefront</span>
+            <select name="storeId" id="postStorefrontSelect">
+              <option value="">No storefront selected</option>
+            </select>
+          </label>
+          <p class="helper-text" id="postStoreHint">Link a storefront to give viewers a direct shopping button.</p>
+          <p class="account-status" id="postUploadStatus" aria-live="polite"></p>
+          <button type="submit" class="primary-btn full-width">Publish to Discover</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="managePostsModal" aria-hidden="true">
+      <section class="manage-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="managePostsTitle">
+        <button class="modal-close" id="closeManagePosts" aria-label="Close post manager">×</button>
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <h2 id="managePostsTitle">Manage posts</h2>
+        </div>
+        <div class="managed-post-list" id="managedPostList"></div>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="manageStoresModal" aria-hidden="true">
+      <section class="manage-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="manageStoresTitle">
+        <button class="modal-close" id="closeManageStores" aria-label="Close storefront manager">×</button>
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <h2 id="manageStoresTitle">Manage storefronts</h2>
+        </div>
+        <div class="managed-store-list" id="managedStoreList"></div>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="accountModal" aria-hidden="true">
+      <section class="account-modal glass-card" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+        <button class="modal-close" id="closeAccount" aria-label="Close account settings">×</button>
+        <div class="modal-header">
+          <div class="brand-mark small-brand">A</div>
+          <h2 id="accountTitle">Account settings</h2>
+        </div>
+        <form id="accountForm" class="store-form account-form">
+          <div class="form-grid">
+            <label>
+              <span>Full name (private)</span>
+              <input type="text" name="fullName" required />
+            </label>
+            <label>
+              <span>Username</span>
+              <input type="text" name="username" required />
+            </label>
+          </div>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" required />
+          </label>
+          <div class="form-grid">
+            <label>
+              <span>Role</span>
+              <select name="role">
+                <option>Web designer</option>
+                <option>Web developer</option>
+                <option>Creative studio</option>
+                <option>Freelancer</option>
+              </select>
+            </label>
+            <label>
+              <span>Focus</span>
+              <select name="focus">
+                <option>Landing pages</option>
+                <option>E-commerce</option>
+                <option>Brand websites</option>
+                <option>Web apps</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            <span>Profile photo</span>
+            <input id="profilePictureInput" type="file" name="profilePicture" accept="image/*" />
+            <small class="helper-text">Use an image up to 2 MB.</small>
+          </label>
+          <h3 class="account-subheading">Social links</h3>
+          <div class="social-link-fields" id="profileSocialLinkFields"></div>
+          <button type="button" class="secondary-btn add-social-link-btn" id="addProfileSocialLink">+ Add a link</button>
+          <p class="helper-text">Paste a social profile URL to detect its service logo for your public profile.</p>
+          <p class="account-status" id="accountSaveStatus" aria-live="polite"></p>
+          <button type="submit" class="primary-btn full-width">Save personal details</button>
+        </form>
+        <div class="password-reset-section">
+          <h3>Reset password</h3>
+          <form id="passwordResetForm" class="store-form">
+            <label>
+              <span>Current password</span>
+              <input type="password" name="currentPassword" autocomplete="current-password" required />
+            </label>
+            <div class="form-grid">
+              <label>
+                <span>New password</span>
+                <input type="password" name="newPassword" autocomplete="new-password" required />
+              </label>
+              <label>
+                <span>Confirm new password</span>
+                <input type="password" name="confirmPassword" autocomplete="new-password" required />
+              </label>
+            </div>
+            <p class="account-status" id="passwordResetStatus" aria-live="polite"></p>
+            <button type="submit" class="secondary-btn full-width">Update password</button>
+          </form>
+          <p class="helper-text">Your password is managed securely by Firebase Authentication.</p>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
