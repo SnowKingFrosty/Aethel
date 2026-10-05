@@ -228,11 +228,6 @@ let activeRoomMessages = [];
 let activeRoomMessageUnsubscribe = null;
 let selectedRoomGif = null;
 let isManagingRoom = false;
-const inactivityLimitMs = 30 * 60 * 1000;
-let inactivityTimeoutId = null;
-let monitoredAuthUid = null;
-let lastActivityWriteAt = 0;
-let signingOutForInactivity = false;
 
 const clearActiveUserSession = () => {
   try {
@@ -410,103 +405,6 @@ const clearCloudStatus = () => {
   cloudStatus.textContent = '';
   cloudStatus.classList.add('hidden');
 };
-
-const activityStorageKey = (uid) => `aethelLastActivity:${uid}`;
-
-const getLastActivityAt = (uid) => {
-  try {
-    const timestamp = Number(localStorage.getItem(activityStorageKey(uid)));
-    return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : 0;
-  } catch (error) {
-    showCloudError(error);
-    return lastActivityWriteAt || Date.now();
-  }
-};
-
-const writeLastActivityAt = (uid, timestamp) => {
-  try {
-    localStorage.setItem(activityStorageKey(uid), String(timestamp));
-    lastActivityWriteAt = timestamp;
-  } catch (error) {
-    lastActivityWriteAt = timestamp;
-    showCloudError(error);
-  }
-};
-
-const scheduleInactivitySignOut = (uid) => {
-  window.clearTimeout(inactivityTimeoutId);
-  if (auth.currentUser?.uid !== uid) return;
-  const lastActivityAt = getLastActivityAt(uid) || Date.now();
-  const remainingMs = inactivityLimitMs - (Date.now() - lastActivityAt);
-  inactivityTimeoutId = window.setTimeout(async () => {
-    if (auth.currentUser?.uid !== uid) return;
-    const latestActivityAt = getLastActivityAt(uid) || lastActivityAt;
-    if (Date.now() - latestActivityAt < inactivityLimitMs) {
-      scheduleInactivitySignOut(uid);
-      return;
-    }
-    signingOutForInactivity = true;
-    try {
-      await signOut(auth);
-    } catch (error) {
-      signingOutForInactivity = false;
-      showCloudError(error);
-    }
-  }, Math.max(0, remainingMs));
-};
-
-const startInactivityMonitor = (user) => {
-  const now = Date.now();
-  const previousActivityAt = getLastActivityAt(user.uid);
-  if (previousActivityAt && now - previousActivityAt >= inactivityLimitMs) {
-    signingOutForInactivity = true;
-    signOut(auth).catch((error) => {
-      signingOutForInactivity = false;
-      showCloudError(error);
-    });
-    return false;
-  }
-  monitoredAuthUid = user.uid;
-  if (!previousActivityAt) writeLastActivityAt(user.uid, now);
-  lastActivityWriteAt = previousActivityAt || now;
-  scheduleInactivitySignOut(user.uid);
-  return true;
-};
-
-const stopInactivityMonitor = () => {
-  window.clearTimeout(inactivityTimeoutId);
-  inactivityTimeoutId = null;
-  const previousUid = monitoredAuthUid;
-  monitoredAuthUid = null;
-  lastActivityWriteAt = 0;
-  if (!previousUid) return;
-  try {
-    localStorage.removeItem(activityStorageKey(previousUid));
-  } catch (error) {
-    showCloudError(error);
-  }
-};
-
-const recordUserActivity = () => {
-  const user = auth.currentUser;
-  if (!isAuthenticated || !user || user.uid !== monitoredAuthUid) return;
-  const now = Date.now();
-  if (now - lastActivityWriteAt >= 10_000) writeLastActivityAt(user.uid, now);
-  scheduleInactivitySignOut(user.uid);
-};
-
-['pointerdown', 'keydown', 'scroll', 'touchstart', 'input', 'visibilitychange'].forEach((eventName) => {
-  document.addEventListener(eventName, recordUserActivity, { passive: true });
-});
-
-window.addEventListener('storage', (event) => {
-  if (!monitoredAuthUid || event.key !== activityStorageKey(monitoredAuthUid)) return;
-  const timestamp = Number(event.newValue);
-  if (Number.isFinite(timestamp) && timestamp > 0) {
-    lastActivityWriteAt = timestamp;
-    scheduleInactivitySignOut(monitoredAuthUid);
-  }
-});
 
 const getAuthErrorMessage = (error, action) => {
   if (
@@ -1427,7 +1325,6 @@ const setAuthenticated = (profile) => {
 const setLoggedOut = () => {
   isAuthenticated = false;
   currentProfile = null;
-  stopInactivityMonitor();
   if (activeChatUnsubscribe) {
     activeChatUnsubscribe();
     activeChatUnsubscribe = null;
@@ -2459,18 +2356,9 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) {
     setLoggedOut();
     if (activeRoomId) renderRoomMessages();
-    if (signingOutForInactivity) {
-      signingOutForInactivity = false;
-      authStatus.textContent = 'You were signed out after 30 minutes of inactivity. Please sign in again.';
-      authStatus.classList.remove('hidden');
-      openModal(loginModal);
-      setAuthMode('signin');
-      return;
-    }
     if (!readStoredValue('aethelWelcomeSeen', false)) openModal(firstVisitWelcome);
     return;
   }
-  if (!startInactivityMonitor(user)) return;
   try {
     const profileSnapshot = await getDoc(doc(db, 'profiles', user.uid));
     currentProfile = profileSnapshot.exists()
